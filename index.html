@@ -279,7 +279,39 @@
       }
     }
 
-  </style>
+  
+/* Saarthe UX upgrades */
+#clearBtn, #copyBtn {
+  cursor: pointer;
+  transition: transform .18s ease, opacity .18s ease, box-shadow .18s ease;
+}
+#clearBtn:hover, #copyBtn:hover {
+  transform: translateY(-1px);
+}
+#clearBtn {
+  opacity: .8;
+}
+#clearBtn:active, #copyBtn:active {
+  transform: scale(.96);
+}
+.secondary-btn {
+  border: 1px solid rgba(255, 233, 185, .28);
+  background: transparent;
+  color: var(--gold);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 700;
+}
+.copy-success {
+  animation: copyPulse .45s ease;
+}
+@keyframes copyPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+</style>
 </head>
 
 <body>
@@ -458,19 +490,45 @@
       setStatus("Decoded successfully.");
     }
 
+    async
     async function copyResult() {
-      const result = document.getElementById("output").textContent;
+      const result = document.getElementById("output").textContent.trim();
 
       if (!result) {
         setStatus("There is no result to copy.", true);
         return;
       }
 
-      try {
-        await navigator.clipboard.writeText(result);
-        setStatus("Result copied.");
-      } catch (error) {
-        setStatus("Copy failed. Please copy manually.", true);
+      let copied = false;
+
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(result);
+          copied = true;
+        } catch (error) {}
+      }
+
+      if (!copied) {
+        try {
+          const area = document.createElement("textarea");
+          area.value = result;
+          area.setAttribute("readonly", "");
+          area.style.position = "fixed";
+          area.style.left = "-9999px";
+          area.style.top = "0";
+          document.body.appendChild(area);
+          area.focus();
+          area.select();
+          area.setSelectionRange(0, area.value.length);
+          copied = document.execCommand("copy");
+          area.remove();
+        } catch (error) {}
+      }
+
+      if (copied) {
+        setStatus("Result copied ✓");
+      } else {
+        setStatus("Copy failed. Please select and copy manually.", true);
       }
     }
 
@@ -488,6 +546,117 @@
       document.getElementById("output").textContent = "";
       setStatus("Cleared.");
     }
-  </script>
+  
+/* Saarthe UX upgrades: reset/focus, animated placeholder, Enter-to-translate, copy */
+(() => {
+  const input =
+    document.querySelector('#inputText') ||
+    document.querySelector('#input') ||
+    document.querySelector('textarea') ||
+    document.querySelector('input[type="text"]');
+
+  const translateBtn =
+    document.querySelector('#translateBtn') ||
+    [...document.querySelectorAll('button')].find(b => /translate/i.test(b.textContent));
+
+  const clearBtn = document.querySelector('#clearBtn');
+  const copyBtn = document.querySelector('#copyBtn');
+
+  const result =
+    document.querySelector('#outputText') ||
+    document.querySelector('#output') ||
+    document.querySelector('#result') ||
+    document.querySelector('.output') ||
+    document.querySelector('.result');
+
+  if (!input) return;
+
+  const placeholders = [
+    'Hinglish ya DOT4 me likho...',
+    'Type something to translate...',
+    'Hindi, English ya DOT4...',
+    'Saarthe se translate karo...'
+  ];
+
+  let phIndex = 0;
+  let phTimer = null;
+  let phPos = 0;
+  let deleting = false;
+
+  function animatePlaceholder() {
+    if (document.activeElement === input || input.value) return;
+    const text = placeholders[phIndex];
+
+    if (!deleting) {
+      phPos++;
+      input.setAttribute('placeholder', text.slice(0, phPos));
+      if (phPos >= text.length) {
+        deleting = true;
+        phTimer = setTimeout(animatePlaceholder, 1200);
+        return;
+      }
+    } else {
+      phPos--;
+      input.setAttribute('placeholder', text.slice(0, phPos));
+      if (phPos <= 0) {
+        deleting = false;
+        phIndex = (phIndex + 1) % placeholders.length;
+      }
+    }
+    phTimer = setTimeout(animatePlaceholder, deleting ? 35 : 65);
+  }
+
+  function startPlaceholder() {
+    clearTimeout(phTimer);
+    phPos = 0;
+    deleting = false;
+    animatePlaceholder();
+  }
+
+  function resetAfterTranslate() {
+    input.value = '';
+    input.focus();
+    startPlaceholder();
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      input.focus();
+      startPlaceholder();
+      if (result && /^(input|textarea)$/i.test(result.tagName)) result.value = '';
+    });
+  }
+
+  if (translateBtn) {
+    translateBtn.addEventListener('click', () => {
+      // Let the existing translator finish first, then prepare the input for
+      // the next message. This does not alter the existing translation logic.
+      setTimeout(resetAfterTranslate, 120);
+    });
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(phTimer);
+    if (input.value) input.setAttribute('placeholder', '');
+    else startPlaceholder();
+  });
+
+  input.addEventListener('focus', () => {
+    if (!input.value) startPlaceholder();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && translateBtn) {
+      e.preventDefault();
+      translateBtn.click();
+    }
+  });
+
+
+  startPlaceholder();
+})();
+
+</script>
 </body>
 </html>
