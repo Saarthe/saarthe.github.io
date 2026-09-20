@@ -341,14 +341,16 @@
     </section>
 
     <div class="buttons">
-      <button onclick="encodeText()">Hinglish → DOT4</button>
+      <button id="translateBtn" onclick="encodeText()">Hinglish → DOT4</button>
       <button onclick="decodeText()">DOT4 → Hinglish</button>
     </div>
 
     <div class="buttons">
-      <button class="secondary" onclick="copyResult()">Copy Result</button>
+      <button id="copyBtn" class="secondary" onclick="copyResult()">Copy Result</button>
       <button class="secondary" onclick="swapText()">Swap</button>
       <button class="secondary" onclick="clearAll()">Clear</button>
+      <button id="micBtn" class="secondary" type="button" aria-label="Voice input">🎤 Mic</button>
+      <button id="speakBtn" class="secondary" type="button" aria-label="Speak result">🔊 Speak Result</button>
     </div>
 
     <div id="status" class="status"></div>
@@ -490,7 +492,6 @@
       setStatus("Decoded successfully.");
     }
 
-    async
     async function copyResult() {
       const result = document.getElementById("output").textContent.trim();
 
@@ -526,6 +527,16 @@
       }
 
       if (copied) {
+        const copyBtn = document.getElementById("copyBtn");
+        if (copyBtn) {
+          const originalText = copyBtn.textContent;
+          copyBtn.textContent = "✓ Copied";
+          copyBtn.classList.add("copy-success");
+          setTimeout(() => {
+            copyBtn.textContent = originalText;
+            copyBtn.classList.remove("copy-success");
+          }, 1400);
+        }
         setStatus("Result copied ✓");
       } else {
         setStatus("Copy failed. Please select and copy manually.", true);
@@ -547,27 +558,13 @@
       setStatus("Cleared.");
     }
   
-/* Saarthe UX upgrades: reset/focus, animated placeholder, Enter-to-translate, copy */
+/* Saarthe UX upgrades: Enter-to-translate, reset/focus, voice input and speak result */
 (() => {
-  const input =
-    document.querySelector('#inputText') ||
-    document.querySelector('#input') ||
-    document.querySelector('textarea') ||
-    document.querySelector('input[type="text"]');
-
-  const translateBtn =
-    document.querySelector('#translateBtn') ||
-    [...document.querySelectorAll('button')].find(b => /translate/i.test(b.textContent));
-
-  const clearBtn = document.querySelector('#clearBtn');
-  const copyBtn = document.querySelector('#copyBtn');
-
-  const result =
-    document.querySelector('#outputText') ||
-    document.querySelector('#output') ||
-    document.querySelector('#result') ||
-    document.querySelector('.output') ||
-    document.querySelector('.result');
+  const input = document.getElementById('input');
+  const translateBtn = document.getElementById('translateBtn');
+  const clearBtn = document.querySelector('button[onclick="clearAll()"]');
+  const micBtn = document.getElementById('micBtn');
+  const speakBtn = document.getElementById('speakBtn');
 
   if (!input) return;
 
@@ -624,14 +621,11 @@
       input.value = '';
       input.focus();
       startPlaceholder();
-      if (result && /^(input|textarea)$/i.test(result.tagName)) result.value = '';
     });
   }
 
   if (translateBtn) {
     translateBtn.addEventListener('click', () => {
-      // Let the existing translator finish first, then prepare the input for
-      // the next message. This does not alter the existing translation logic.
       setTimeout(resetAfterTranslate, 120);
     });
   }
@@ -646,42 +640,80 @@
     if (!input.value) startPlaceholder();
   });
 
+  // Enter = translate. Shift+Enter = normal newline.
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && translateBtn) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      translateBtn.click();
+      encodeText();
+      setTimeout(resetAfterTranslate, 120);
     }
   });
 
+  // Voice input: speech -> text -> automatic DOT4 translation.
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+
+  if (micBtn && SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.lang = 'en-IN';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = () => {
+      micBtn.textContent = '⏹ Stop';
+      micBtn.classList.add('copy-success');
+      setStatus('Listening...');
+    };
+
+    recognition.onresult = (event) => {
+      const spoken = event.results[0][0].transcript.trim();
+      input.value = spoken;
+      input.dispatchEvent(new Event('input'));
+      encodeText();
+      setTimeout(resetAfterTranslate, 120);
+    };
+
+    recognition.onerror = (event) => {
+      setStatus('Voice input error: ' + event.error, true);
+    };
+
+    recognition.onend = () => {
+      micBtn.textContent = '🎤 Mic';
+      micBtn.classList.remove('copy-success');
+    };
+
+    micBtn.addEventListener('click', () => {
+      try { recognition.start(); } catch (error) {}
+    });
+  } else if (micBtn) {
+    micBtn.addEventListener('click', () => {
+      setStatus('Voice input is not supported in this browser.', true);
+    });
+  }
+
+  // Speak the current result aloud.
+  if (speakBtn) {
+    speakBtn.addEventListener('click', () => {
+      const result = document.getElementById('output').textContent.trim();
+      if (!result) {
+        setStatus('There is no result to speak.', true);
+        return;
+      }
+      if (!('speechSynthesis' in window)) {
+        setStatus('Text-to-speech is not supported in this browser.', true);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(result);
+      utterance.lang = 'en-IN';
+      window.speechSynthesis.speak(utterance);
+      setStatus('Speaking result...');
+    });
+  }
 
   startPlaceholder();
 })();
 
-document.getElementById("input").addEventListener("keydown", function (event) {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-
-    const text = this.value.trim();
-
-    if (!text) {
-      setStatus("Pehle kuch type karo.", true);
-      return;
-    }
-
-    // DOT4 hai to decode, warna Hinglish ko DOT4 me encode karo
-    if (/^[0-9 .,';\-_]+$/.test(text)) {
-      decodeText();
-    } else {
-      encodeText();
-    }
-
-    // Translation ke baad input ready
-    setTimeout(() => {
-      this.value = "";
-      this.focus();
-    }, 150);
-  }
-});
-  </script>
+</script>
 </body>
 </html>
