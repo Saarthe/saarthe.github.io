@@ -403,12 +403,98 @@
     function swapText(){const i=document.getElementById("input"),o=document.getElementById("output"),x=i.value;i.value=o.textContent;o.textContent=x;setStatus("Input and result swapped.");}
     function clearAll(){document.getElementById("input").value="";document.getElementById("output").textContent="";setStatus("Cleared.");document.getElementById("input").focus();}
     function speakResult(){const t=document.getElementById("output").textContent.trim();if(!t)return setStatus("Nothing to speak.",true);if(!window.speechSynthesis)return setStatus("Text-to-speech is not supported here.",true);speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t));setStatus("Speaking result...");}
-    function startVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return setStatus("Voice input is not supported in this browser.",true);const rec=new SR();rec.lang="en-IN";rec.interimResults=false;rec.maxAlternatives=1;setStatus("Listening...");rec.onresult=e=>{document.getElementById("input").value=e.results[0][0].transcript;translateAuto();};rec.onerror=()=>setStatus("Voice input failed. Try again.",true);rec.start();}
+    let voiceRecognition=null;
+    let voiceListening=false;
+    function startVoice(){
+      const btn=document.querySelector('button[onclick="startVoice()"]');
+      const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR)return setStatus("Voice input is not supported in this browser. Use Chrome/Edge and allow microphone access.",true);
+      if(voiceListening&&voiceRecognition){try{voiceRecognition.stop();}catch(_){}return;}
+      try{
+        voiceRecognition=new SR();
+        voiceRecognition.lang="en-IN";
+        voiceRecognition.continuous=false;
+        voiceRecognition.interimResults=false;
+        voiceRecognition.maxAlternatives=1;
+        voiceListening=true;
+        if(btn)btn.textContent="⏹ Stop";
+        setStatus("🎤 Listening... Speak now.");
+        voiceRecognition.onresult=e=>{
+          const spoken=e.results&&e.results[0]&&e.results[0][0]?e.results[0][0].transcript.trim():"";
+          if(!spoken)return setStatus("No speech detected. Try again.",true);
+          const input=document.getElementById("input");
+          input.value=spoken;
+          translateAuto();
+        };
+        voiceRecognition.onerror=e=>{
+          const msg={
+            "not-allowed":"Microphone permission was blocked. Allow microphone access and try again.",
+            "service-not-allowed":"Speech recognition service is blocked in this browser.",
+            "audio-capture":"No microphone was found or it is being used by another app.",
+            "no-speech":"No speech detected. Please speak after the mic starts.",
+            "network":"Speech recognition needs an internet connection in this browser."
+          }[e.error]||"Voice input failed. Try Chrome/Edge and allow microphone access.";
+          setStatus(msg,true);
+        };
+        voiceRecognition.onend=()=>{
+          voiceListening=false;
+          voiceRecognition=null;
+          if(btn)btn.textContent="🎤 Voice";
+        };
+        voiceRecognition.start();
+      }catch(e){
+        voiceListening=false;
+        voiceRecognition=null;
+        if(btn)btn.textContent="🎤 Voice";
+        setStatus("Could not start microphone. Allow mic permission and try again.",true);
+      }
+    }
     document.addEventListener("DOMContentLoaded",()=>{document.getElementById("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();translateAuto();}});});
+  </script>
 
-</script>
+  <script>
+    // Placeholder animation only
+    (() => {
+      const input = document.getElementById("input");
+      if (!input) return;
+      const texts = [
+        "Yahan Hinglish ya DOT4 me likho",
+        "Type here in English or DOT4"
+      ];
+      let index = 0, pos = 0, deleting = false, timer = null, stopped = false;
 
-  
-</script>
+      function tick() {
+        if (stopped || input.value) return;
+        const text = texts[index];
+        if (!deleting) {
+          pos++;
+          input.placeholder = text.slice(0, pos);
+          if (pos === text.length) {
+            deleting = true;
+            timer = setTimeout(tick, 1400);
+            return;
+          }
+        } else {
+          pos--;
+          input.placeholder = text.slice(0, pos);
+          if (pos === 0) {
+            deleting = false;
+            index = (index + 1) % texts.length;
+          }
+        }
+        timer = setTimeout(tick, deleting ? 45 : 75);
+      }
+
+      input.addEventListener("input", () => {
+        if (input.value) {
+          stopped = true;
+          clearTimeout(timer);
+          input.placeholder = "";
+        }
+      });
+
+      tick();
+    })();
+  </script>
 </body>
 </html>
