@@ -405,66 +405,7 @@
     function speakResult(){const t=document.getElementById("output").textContent.trim();if(!t)return setStatus("Nothing to speak.",true);if(!window.speechSynthesis)return setStatus("Text-to-speech is not supported here.",true);speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t));setStatus("Speaking result...");}
     function startVoice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return setStatus("Voice input is not supported in this browser.",true);const rec=new SR();rec.lang="en-IN";rec.interimResults=false;rec.maxAlternatives=1;setStatus("Listening...");rec.onresult=e=>{document.getElementById("input").value=e.results[0][0].transcript;translateAuto();};rec.onerror=()=>setStatus("Voice input failed. Try again.",true);rec.start();}
     document.addEventListener("DOMContentLoaded",()=>{document.getElementById("input").addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();translateAuto();}});});
-<script>
-const inputBox = document.getElementById("inputText");
 
-const placeholderTexts = [
-  "yahan Hinglish/English ya DOT4 code likho",
-  "type here in DOT4 ya Hinglish/English"
-];
-
-let textIndex = 0;
-let charIndex = 0;
-let deleting = false;
-let typingTimer;
-
-function animatePlaceholder() {
-  // User kuch type kar raha hai to animation stop
-  if (inputBox.value.length > 0) {
-    inputBox.placeholder = "";
-    return;
-  }
-
-  const text = placeholderTexts[textIndex];
-
-  if (!deleting) {
-    charIndex++;
-    inputBox.placeholder = text.substring(0, charIndex);
-
-    if (charIndex >= text.length) {
-      deleting = true;
-      typingTimer = setTimeout(animatePlaceholder, 1800);
-      return;
-    }
-  } else {
-    charIndex--;
-    inputBox.placeholder = text.substring(0, charIndex);
-
-    if (charIndex <= 0) {
-      deleting = false;
-      textIndex = (textIndex + 1) % placeholderTexts.length;
-    }
-  }
-
-  typingTimer = setTimeout(animatePlaceholder, deleting ? 45 : 75);
-}
-
-// User type kare → placeholder hide
-inputBox.addEventListener("input", () => {
-  if (inputBox.value.length > 0) {
-    clearTimeout(typingTimer);
-    inputBox.placeholder = "";
-  } else {
-    charIndex = 0;
-    deleting = false;
-    clearTimeout(typingTimer);
-    animatePlaceholder();
-  }
-});
-
-// Start animation
-animatePlaceholder();
-</script>
 </script>
 </body>
 </html>
