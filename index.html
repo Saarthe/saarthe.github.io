@@ -424,53 +424,8 @@
 }
 </style>
 
-<script>
-const input = document.getElementById("input");
 
-const texts = [
-  "Yahan Hinglish/English ya DOT4 code likho",
-  "type here in DOT4 ya Hinglish/English"
-];
-
-let i = 0, j = 0, del = false;
-
-function animatePlaceholder() {
-  if (input.value) return input.placeholder = "";
-
-  const text = texts[i];
-
-  input.placeholder = text.slice(0, j);
-
-  if (!del) {
-    j++;
-    if (j > text.length) {
-      del = true;
-      return setTimeout(animatePlaceholder, 1500);
-    }
-  } else {
-    j--;
-    if (j < 0) {
-      j = 0;
-      del = false;
-      i = (i + 1) % texts.length;
-    }
-  }
-
-  setTimeout(animatePlaceholder, del ? 35 : 65);
-}
-
-input.addEventListener("input", () => {
-  if (input.value) input.placeholder = "";
-  else {
-    i = 0;
-    j = 0;
-    del = false;
-    animatePlaceholder();
-  }
-});
-
-animatePlaceholder();
-</script>
+  
 </script>
 </body>
 </html>
