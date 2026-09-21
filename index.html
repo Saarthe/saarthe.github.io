@@ -425,198 +425,52 @@
 </style>
 
 <script>
-/* =========================================
-   SAARTHE ANIMATED PLACEHOLDER
-   ========================================= */
+const input = document.getElementById("input");
 
-const saartheInput = document.getElementById("input");
-
-const placeholderMessages = [
+const texts = [
   "Yahan Hinglish/English ya DOT4 code likho",
   "type here in DOT4 ya Hinglish/English"
 ];
 
-let placeholderMessage = 0;
-let placeholderPosition = 0;
-let placeholderDeleting = false;
-let placeholderTimer = null;
+let i = 0, j = 0, del = false;
 
-function runPlaceholderAnimation() {
-  // Agar user likh raha hai to animation mat dikhao
-  if (!saartheInput || saartheInput.value.length > 0) {
-    if (saartheInput) saartheInput.placeholder = "";
-    return;
-  }
+function animatePlaceholder() {
+  if (input.value) return input.placeholder = "";
 
-  const message = placeholderMessages[placeholderMessage];
+  const text = texts[i];
 
-  if (!placeholderDeleting) {
-    placeholderPosition++;
+  input.placeholder = text.slice(0, j);
 
-    saartheInput.placeholder =
-      message.substring(0, placeholderPosition);
-
-    if (placeholderPosition >= message.length) {
-      placeholderDeleting = true;
-
-      placeholderTimer = setTimeout(
-        runPlaceholderAnimation,
-        1800
-      );
-
-      return;
+  if (!del) {
+    j++;
+    if (j > text.length) {
+      del = true;
+      return setTimeout(animatePlaceholder, 1500);
     }
-
-    placeholderTimer = setTimeout(
-      runPlaceholderAnimation,
-      65
-    );
-
   } else {
-    placeholderPosition--;
-
-    saartheInput.placeholder =
-      message.substring(0, placeholderPosition);
-
-    if (placeholderPosition <= 0) {
-      placeholderDeleting = false;
-      placeholderMessage =
-        (placeholderMessage + 1) %
-        placeholderMessages.length;
-
-      placeholderTimer = setTimeout(
-        runPlaceholderAnimation,
-        400
-      );
-
-      return;
+    j--;
+    if (j < 0) {
+      j = 0;
+      del = false;
+      i = (i + 1) % texts.length;
     }
-
-    placeholderTimer = setTimeout(
-      runPlaceholderAnimation,
-      35
-    );
   }
+
+  setTimeout(animatePlaceholder, del ? 35 : 65);
 }
 
-
-/* User typing kare to animation stop */
-saartheInput.addEventListener("input", function () {
-
-  clearTimeout(placeholderTimer);
-
-  if (this.value.length > 0) {
-    this.placeholder = "";
-  } else {
-    placeholderPosition = 0;
-    placeholderDeleting = false;
-    runPlaceholderAnimation();
+input.addEventListener("input", () => {
+  if (input.value) input.placeholder = "";
+  else {
+    i = 0;
+    j = 0;
+    del = false;
+    animatePlaceholder();
   }
-
 });
 
-
-/* Clear button ke baad bhi animation restart */
-const oldClearAll = window.clearAll;
-
-window.clearAll = function () {
-
-  if (typeof oldClearAll === "function") {
-    oldClearAll();
-  }
-
-  saartheInput.value = "";
-  clearTimeout(placeholderTimer);
-
-  placeholderMessage = 0;
-  placeholderPosition = 0;
-  placeholderDeleting = false;
-
-  runPlaceholderAnimation();
-};
-
-
-/* Start */
-runPlaceholderAnimation();
-
-
-/* =========================================
-   LOGO FALLBACK
-   ========================================= */
-
-/*
-   Agar original logo image load nahi hoti,
-   to ye clean Saarthe logo automatically
-   show karega.
-*/
-
-const saartheLogo = document.getElementById("logo");
-
-if (saartheLogo) {
-
-  saartheLogo.onerror = function () {
-
-    this.removeAttribute("src");
-
-    this.src =
-      "data:image/svg+xml;charset=UTF-8," +
-      encodeURIComponent(`
-        <svg xmlns="http://www.w3.org/2000/svg"
-             width="180"
-             height="180"
-             viewBox="0 0 180 180">
-
-          <defs>
-            <linearGradient id="g"
-              x1="0%" y1="0%"
-              x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ffd98a"/>
-              <stop offset="100%" stop-color="#c8943f"/>
-            </linearGradient>
-          </defs>
-
-          <circle
-            cx="90"
-            cy="90"
-            r="76"
-            fill="none"
-            stroke="url(#g)"
-            stroke-width="5"/>
-
-          <circle
-            cx="90"
-            cy="90"
-            r="62"
-            fill="rgba(255,255,255,0.03)"
-            stroke="#ffd98a"
-            stroke-width="2"/>
-
-          <text
-            x="90"
-            y="108"
-            text-anchor="middle"
-            font-family="Arial, sans-serif"
-            font-size="62"
-            font-weight="800"
-            fill="url(#g)">
-            S
-          </text>
-
-        </svg>
-      `);
-  };
-
-  /* Force browser ko image reload check */
-  if (!saartheLogo.complete || saartheLogo.naturalWidth === 0) {
-    setTimeout(function () {
-
-      if (saartheLogo.naturalWidth === 0) {
-        saartheLogo.onerror();
-      }
-
-    }, 500);
-  }
-}
+animatePlaceholder();
+</script>
 </script>
 </body>
 </html>
